@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(AccioPath)
 
 set(CMAKE_CXX_STANDARD 20)
-
+set(CMAKE_VERBOSE_MAKEFILE ON)
 # Add include directory
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(/usr/local/include/eigen3)

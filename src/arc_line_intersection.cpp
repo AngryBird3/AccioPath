@@ -1,6 +1,9 @@
 #include "arc_line_intersection.h"
+#include "../include/arc_line_intersection.h"
 
 #include <optional>
+
+#include "../include/types.h"
 
 double ArcLineIntersection::perpendicularDistance(const LineSegment& segment, const Path& path)
 {
@@ -21,7 +24,7 @@ double ArcLineIntersection::perpendicularDistance(const LineSegment& segment, co
     return std::abs(cross) / dNorm;
 }
 
-std::optional<Point2d> intersectionPoint(const LineSegment& segment, const Path& path)
+std::optional<Point2d> ArcLineIntersection::intersectionPoint(const LineSegment& segment, const Path& path)
 {
     /**
      * This is using discriminant method to find intersection points between a line and an arc.
@@ -76,7 +79,8 @@ std::optional<Point2d> intersectionPoint(const LineSegment& segment, const Path&
     }
 }
 
-std::optional<double> ArcLineIntersection::isWithinArcAngle(const Point2d& point, const Path& path)
+bool ArcLineIntersection::isWithinArcAngleAndHeight(const Point2d& point, double segmentHeight,
+                                                                        const Path& path)
 {
     // Calculate angle of point relative to arc center
     Eigen::Vector2d vec = point - path.center_;
@@ -106,7 +110,105 @@ std::optional<double> ArcLineIntersection::isWithinArcAngle(const Point2d& point
     }
 
     // find height at that point
-    double angularProgress = tAlongStart / arcSpan;
+    double angularProgress = arcSpan > 0 ? (tAlongStart / arcSpan) : 0.0;
     double heightAtPoint = path.startHeight_ + angularProgress * (path.endHeight_ - path.startHeight_);
-    return heightAtPoint;
+
+    // Gate against z - height of line segment (convex polygon)
+    return heightAtPoint <= segmentHeight;
+}
+
+bool ArcLineIntersection::Intersect(const Obstacle& obstacle, const Path& path)
+{
+    bool result = false;
+    // Iterate over segment to find whether path intersects with any of its edges
+    for (auto iIndex = 0; iIndex < obstacle.vertices.size(); iIndex++)
+    {
+        LineSegment segment;
+        segment.p0 = obstacle.vertices[iIndex];
+        segment.p1 = obstacle.vertices[(iIndex + 1) % obstacle.vertices.size()];
+        segment.height = obstacle.height;
+
+        result = ArcLineIntersection::isPathIntersectingSegment(segment, path);
+        if (true == result)
+        {
+            return result;
+        }
+    }
+
+    // Lastly check whether whole arc is inside the polygon
+    auto [arcStart, arcEnd] = ArcLineIntersection::getStartAndEndPointsOfPath(path);
+    if (isPointInPolygon(arcStart, obstacle) && isPointInPolygon(arcEnd, obstacle))
+    {
+        result = true;
+    }
+
+    return result;
+}
+
+bool ArcLineIntersection::isPathIntersectingSegment(const LineSegment& segment, const Path& path)
+{
+    // First do a quick check using perpendicular distance from line to arc center
+    double perpDist = perpendicularDistance(segment, path);
+    if (perpDist > path.radius_)
+    {
+        return false; // No intersection possible
+    }
+
+    // Now find the actual intersection point(s) between the line segment and the arc's circle
+    auto intersectionOpt = intersectionPoint(segment, path);
+    if (!intersectionOpt.has_value())
+    {
+        return false; // No intersection points within segment bounds
+    }
+    auto intersection = intersectionOpt.value();
+
+    // Check if the intersection point is within the arc's angular span and below the height of the segment
+    auto heightCheck = isWithinArcAngleAndHeight(intersection, segment.height, path);
+    return heightCheck;
+}
+
+bool ArcLineIntersection::isPointInPolygon(const Point2d& point, const Obstacle& polygon)
+{
+    // Use cross-product method to determine if point is inside polygon
+    // we are given that polygon is convex and vertices are in clockwise order
+    // So we will use cross-product from each edge and edge to point vector to determine if point is inside
+    // If all cross products have the same sign, point is inside
+    bool inside = false;
+    auto n = polygon.vertices.size();
+    for (auto iIndex = 0; iIndex < n; iIndex++)
+    {
+        auto v0 = polygon.vertices[iIndex];
+        auto v1 = polygon.vertices[(iIndex + 1) % n];
+        Eigen::Vector2d edge = v1 - v0;
+        Eigen::Vector2d toPoint = point - v0;
+        double cross = edge.x() * toPoint.y() - edge.y() * toPoint.x();
+        // if cross is zero, point is on the edge, we consider that inside
+        if (iIndex == 0)
+        {
+            inside = cross >= 0; // Initialize inside based on first cross product. we will match this sign for all others
+        }
+        else
+        {
+            if ((cross >= 0) != inside)
+            {
+                return false; // Point is outside
+            }
+        }
+    }
+    return inside;
+}
+
+ArcLineIntersection::StartAndEndPointsOfArc ArcLineIntersection::getStartAndEndPointsOfPath(const Path& path)
+{
+    // sine/cosine expects angle in radia
+    // n from X axis
+    auto thetaFromXAxis = [](double angleInDegrees) {
+        double angleInRadians = (90.0 - angleInDegrees) * (M_PI / 180.0);
+        return angleInRadians;
+    };
+    Eigen::Vector2d startVec(std::cos(thetaFromXAxis(path.startAngle_)), std::sin(thetaFromXAxis(path.startAngle_)));
+    Eigen::Vector2d endVec(std::cos(thetaFromXAxis(path.endAngle_)), std::sin(thetaFromXAxis(path.endAngle_)));
+    StartPointOfArc startPoint = path.center_ + path.radius_ * startVec;
+    EndPointOfArc endPoint = path.center_ + path.radius_ * endVec;
+    return {startPoint, endPoint};
 }

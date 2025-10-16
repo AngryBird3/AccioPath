@@ -5,11 +5,11 @@
 #include "vector"
 
 using Point2d = Eigen::Vector2d;
-
 struct LineSegment
 {
     Point2d p0;
     Point2d p1;
+    float height;
 };
 
 /// \brief The obstacle is a convex polygon with a fixed height. It is encoded as an object consisting of an
