@@ -2,8 +2,13 @@
 
 #include "types.h"
 
+// Forward declaration for unit testing
+class ArcLineIntersectionTest;
+
 class ArcLineIntersection
 {
+    // for unit testing
+    friend class ArcLineIntersectionTest;
 public:
     /**
      * @brief Returns true if the line segment intersects the circular arc path

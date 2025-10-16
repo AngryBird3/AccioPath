@@ -1,6 +1,7 @@
 #include "arc_line_intersection.h"
 #include "../include/arc_line_intersection.h"
 
+#include <iostream>
 #include <optional>
 
 #include "../include/types.h"
