@@ -51,31 +51,62 @@ std::optional<Point2d> intersectionPoint(const LineSegment& segment, const Path&
     {
         return std::nullopt; // No intersection
     }
+    // One or two intersections
+    double sqrtDiscriminant = std::sqrt(discriminant);
+    double t1 = (-B + sqrtDiscriminant) / (2 * A);
+    double t2 = (-B - sqrtDiscriminant) / (2 * A);
+    bool t1Valid = (t1 >= 0.0 && t1 <= 1.0);
+    bool t2Valid = (t2 >= 0.0 && t2 <= 1.0);
+    if (t1Valid && t2Valid)
+    {
+        // Two valid intersections, return the one closer to segment.p0
+        return (t1 < t2) ? (segment.p0 + t1 * D) : (segment.p0 + t2 * D);
+    }
+    else if (t1Valid)
+    {
+        return segment.p0 + t1 * D;
+    }
+    else if (t2Valid)
+    {
+        return segment.p0 + t2 * D;
+    }
     else
     {
-        // One or two intersections
-        double sqrtDiscriminant = std::sqrt(discriminant);
-        double t1 = (-B + sqrtDiscriminant) / (2 * A);
-        double t2 = (-B - sqrtDiscriminant) / (2 * A);
-        bool t1Valid = (t1 >= 0.0 && t1 <= 1.0);
-        bool t2Valid = (t2 >= 0.0 && t2 <= 1.0);
-        if (t1Valid && t2Valid)
-        {
-            // Two valid intersections, return the one closer to segment.p0
-            return (t1 < t2) ? (segment.p0 + t1 * D) : (segment.p0 + t2 * D);
-        }
-        else if (t1Valid)
-        {
-            return segment.p0 + t1 * D;
-        }
-        else if (t2Valid)
-        {
-            return segment.p0 + t2 * D;
-        }
-        else
-        {
-            return std::nullopt; // Both intersections are out of segment bounds
-        }
+        return std::nullopt; // Both intersections are out of segment bounds
+    }
+}
+
+std::optional<double> ArcLineIntersection::isWithinArcAngle(const Point2d& point, const Path& path)
+{
+    // Calculate angle of point relative to arc center
+    Eigen::Vector2d vec = point - path.center_;
+    double tAngle = std::atan2(vec.y(), vec.x()); // Angle in radians
+    tAngle = (tAngle * 180.0) / M_PI; // Convert to degrees
+
+    // we want that angle to be against Y axis, clockwise positive cause we are given angles in that way
+    tAngle = 90.0 - tAngle;
+
+    // Normalize angles to [0, 2pi]
+    auto normalizeAngle = [](double a) {
+        a = fmod(a, 2 * M_PI);
+        if (a < 0)
+            a += 2 * M_PI;
+        return a;
+    };
+
+    double startAngle = normalizeAngle(path.startAngle_);
+    double endAngle = normalizeAngle(path.endAngle_);
+    tAngle = normalizeAngle(tAngle);
+
+    auto tAlongStart = normalizeAngle(tAngle - startAngle);
+    auto arcSpan = normalizeAngle(endAngle - startAngle);
+    if (tAlongStart > arcSpan)
+    {
+        return false;
     }
 
+    // find height at that point
+    double angularProgress = tAlongStart / arcSpan;
+    double heightAtPoint = path.startHeight_ + angularProgress * (path.endHeight_ - path.startHeight_);
+    return heightAtPoint;
 }

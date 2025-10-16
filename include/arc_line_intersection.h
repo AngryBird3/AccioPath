@@ -28,7 +28,8 @@ private:
      * Check if a point is within the angular span of the arc.
      * @param point
      * @param path
-     * @return
+     * @return interpolated height at that point if point is within arc angle, std::nullopt otherwise
      */
-    static bool isWithinArcAngle(const Point2d& point, const Path& path);
+    static std::optional<double> isWithinArcAngle(const Point2d& point, const Path& path);
+
 };
