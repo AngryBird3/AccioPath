@@ -1,6 +1,14 @@
 # AccioPath
+Determine if a path intersects with an obstacle
 
-## Approach
+## Problem Statement
+Given a set of obstacles and a path, determine whether the path intersects with any of the obstacles.
+
+## Some highlight
+* Discriminant method - Finds intersection points between a line and a circle
+* Cross-product method - Determines whether a point is inside a polygon
+
+## Approach in Details
 1. First apprached it with how to find intersection of a line and a circle.
 * I had solved whether a point lies on the circle or not in my previous project.
 * I used the similar intuation to find intersection of a line and a circle.
@@ -17,4 +25,4 @@
 * (2) I had to check whether my start and end point of my arc (path) is inside the polygon or not.
 * For that, I had to look up hey how do I check whether a point is inside a polygon or not. This required cross-product
 * and right-hand rule. That was fun to learn. I had to draw few things to understand it. I used (0,0), (0, 2), (3, 0) triangle
-* as convex polygon and checked whether (1,1) and point(2, 2) is inside or not. 
+* as convex poDetermine if a path intersects with an obstacleilygon and checked whether (1,1) and point(2, 2) is inside or not. 
